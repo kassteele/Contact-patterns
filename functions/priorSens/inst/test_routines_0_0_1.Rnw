@@ -1,0 +1,163 @@
+\documentclass{article}
+
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+
+\section*{Example 1}
+
+<<echo = FALSE>>=
+root = "~/projects/prior_sensitivity"
+require(devtools)
+require(testthat)
+load_all(file.path(root, "previous/priorSens_0.0.1"))
+
+mm0<-70; ll0<-0.5; nn<-4; kk<-1; mh<-76
+
+n <-nn
+const<-rep(1,n)
+kappa<-kk
+sd.kappa<-sqrt(1/kappa)
+mu.dat<-mh
+set.seed(100)
+y = rnorm(n,mu.dat,sd.kappa)
+y<-y-mean(y)+mu.dat
+ex1.data<-data.frame(y,const)
+
+# Running INLA
+#--------------
+
+ex1.m0l0 = inla(y ~ const-1, data = ex1.data,
+                control.fixed=list(mean=list(const=mm0),prec=list(const=ll0)), 
+                control.family = list(hyper = list(prec = list(initial=log(kk),fixed=TRUE))),
+                num.threads=1)
+
+inla_marginal_posterior <- ex1.m0l0$"marginals.fixed"$"const" # marginal posterior density at (mm0,ll0)
+
+# Computing sensibility
+#-----------------------
+time1 = Sys.time()
+
+grid_epsilon <- 0.05 # epsilon used in the grid exploration around prior values.
+number_axis_points <- 200  # How many points for a given parameter in the grid exploration, 
+
+gaussian_grid_polar = compute_grid_polar(number_axis_points = 2*number_axis_points, 
+                                         objective_function = "gaussian",
+                                         hyperpar = c(mean = mm0, prec = ll0),
+                                         grid_epsilon = grid_epsilon)
+
+inla_sens_gaussian = compute_sensitivity(grid = gaussian_grid_polar,
+                                         inla_marginal_posterior = inla_marginal_posterior, 
+                                         integration_limits = TRUE)
+
+max_inla_sens_gaussian = max(inla_sens_gaussian$sensitivity[,"sensitivity"])
+expect_equal(max_inla_sens_gaussian, 1.970, tolerance = 1e-2)
+
+sensitivity_obj = prior_sensitivity(objective_function = "gaussian",
+                                    hyperpar = c(mean = mm0, prec = ll0),
+                                    inla_marginal_posterior = inla_marginal_posterior, 
+                                    number_axis_points = 2*number_axis_points,
+                                    grid_epsilon = grid_epsilon,
+                                    search_interval = c(-100, 40),
+                                    integration_limits = TRUE)
+
+expect_identical(sensitivity_obj$polar_grid, gaussian_grid_polar)
+expect_identical(sensitivity_obj$sensitivity, inla_sens_gaussian$sensitivity)
+expect_equal(max(sensitivity_obj$sensitivity[,"sensitivity"]), 1.970, tolerance = 1e-2)
+
+time2 = Sys.time()
+
+<<>>=
+print(time2 - time1)
+
+source("~/Dropbox/Hallo/Sensitivity20130725/package_plots_MR_R3eps05R64.R")
+
+<<fig=TRUE>>=
+plot_grid_aspect(grid_obj = gaussian_grid_polar, xname = NULL, yname = NULL)
+
+<<fig=TRUE>>=
+plot_grid_no_aspect(grid_obj = gaussian_grid_polar, xname = NULL, yname = NULL)
+
+<<fig=TRUE>>=
+plot_polar_sens(sens_obj = inla_sens_gaussian$sensitivity,
+                angle_shift = NULL,
+                modulus_scale = NULL,
+                xname = NULL,
+                yname = NULL)
+
+<<fig=TRUE>>=
+plot_line_sens(sens_obj = inla_sens_gaussian$sensitivity)
+@
+
+\section*{Example 2}
+
+<<echo=FALSE>>=
+
+## Parameters for the model in Ex2
+aa0<-0.5
+bb0<-0.01
+n <- 10
+m <- 2
+sigma2.ML<-0.035
+ntsigma2.ML<-n*sigma2.ML
+set.seed(100)
+y <- rnorm(n, mean = m, sd = sqrt(bb0 / aa0))
+y <- m + sqrt(sigma2.ML) * (y - mean(y)) / (sqrt((n - 1) / n) * sd(y))
+stopifnot(all.equal(ntsigma2.ML,
+                    sum((y - m)^2)))
+ex2.data <- data.frame(y, const=1)
+ex2.a0b0 <- inla(y ~ -1 + const,
+                 data = ex2.data,
+                 control.fixed=list(mean=list(const=m),prec=list(const=1e12)),
+                 control.family=list(hyper =list(prec =list(prior="loggamma",param=c(aa0, bb0)))),
+                 control.compute=list(hyperpar=TRUE),
+                 control.predictor = list(initial = 15),
+                 num.threads=1)
+ex2.a0b0.hyp <- inla.hyperpar(ex2.a0b0, dz = 0.25, diff.logdens = 15)
+
+ex2.post.log.a0b0<-ex2.a0b0.hyp$"internal.marginals.hyperpar"$`Log precision for the Gaussian observations`
+exact_posterior <- cbind(ex2.post.log.a0b0[,1], dgamma(exp(ex2.post.log.a0b0[,1]), shape = aa0 + n/2, rate = bb0 + 0.5 * ntsigma2.ML) * exp(ex2.post.log.a0b0[,1]))
+
+# Computing sensibility
+#-----------------------
+time1 = Sys.time()
+
+number_axis_points = 100
+grid_epsilon = 0.05
+
+gamma_grid_polar = compute_grid_polar(number_axis_points = 2*number_axis_points, 
+                                      objective_function = "gamma",
+                                      hyperpar = c(shape = aa0, rate = bb0),
+                                      grid_epsilon = grid_epsilon)
+
+inla_sens_gamma = compute_sensitivity(grid = gamma_grid_polar,
+                                      inla_marginal_posterior = ex2.post.log.a0b0, 
+                                      integration_limits = TRUE)
+
+time2 = Sys.time()
+
+max_inla_sens_gamma = max(inla_sens_gamma$sensitivity[,"sensitivity"])
+expect_equal(max_inla_sens_gamma, 0.2135015, tolerance = 1e-3)
+
+<<>>=
+print(time2 - time1)
+
+source("~/Dropbox/Hallo/Sensitivity20130725/package_plots_MR_R3eps05R64.R")
+
+<<fig=TRUE>>=
+plot_grid_aspect(grid_obj = gamma_grid_polar, xname = NULL, yname = NULL)
+
+<<fig=TRUE>>=
+plot_grid_no_aspect(grid_obj = gamma_grid_polar, xname = NULL, yname = NULL)
+
+<<fig=TRUE>>=
+plot_polar_sens(sens_obj = inla_sens_gamma$sensitivity,
+                angle_shift = NULL,
+                modulus_scale = NULL,
+                xname = NULL,
+                yname = NULL)
+
+<<fig=TRUE>>=
+plot_line_sens(sens_obj = inla_sens_gamma$sensitivity)
+@
+
+\end{document}

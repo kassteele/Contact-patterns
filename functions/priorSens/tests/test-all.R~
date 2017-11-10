@@ -1,0 +1,5 @@
+library(testthat)
+library(devtools)
+load_all("~/sw/R/tgmDataMan")
+
+test_package("tgmDataMan")

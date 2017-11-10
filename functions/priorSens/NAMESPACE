@@ -1,0 +1,14 @@
+#import(methods)
+useDynLib("priorSens")
+#importFrom("stats", coef)
+#import("graphics")
+#importFrom("dlm", as.dlm)
+
+#exportClasses()
+
+# Non-generic
+export(
+compute_grid_polar
+)
+
+

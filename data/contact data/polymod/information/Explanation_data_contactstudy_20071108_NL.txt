@@ -1,0 +1,36 @@
+
+
+The contactstudy was performed by Janneke Heijne; she also made the first data-delivery (september 2006).
+Janneke now no longer works at the RIVM, but she has checked/cleaned/reorganised all the data of the study.
+The translation and processing of the data was performed by Ben Bom (ben.bom@rivm.nl)
+
+
+This data-delivery contains all the collected data, including the data allready delivered (sept 2006)
+It exists of two text-files:
+- Participants_20071108_NL.txt  (826 records)
+- Contacts_20071108_NL.txt (11.221 records)
+
+
+Remarks:
+1) The "Dictionary for contact surveys - v1.1.doc" was used for naming & coding of the variables.
+2) Some of the variables from the dictionary were not a part of our survey; these were omitted from the data-files.
+(as before:)
+3) In “participant_occupation”(paricipants) we added a new value label 7: disabled
+4) In “diary_how”(participants) we added a new value label  4: day and evening
+5) Regarding to "participant_edu_length"(participants) We tried to standardize our education level with the dictionary,
+   but it was very hard. It resulted in the following:
+	0: no formal schooling 
+	1: primary school --> 8 years
+	2: secondary school (lower) --> + 3-6 years
+	3: secondary school (upper) --> + 5-6 years
+	5: university degree (lower) --> + 4 years
+	6: university degrees (higher) --> +6 years
+
+
+-----------------------------
+
+24-7-2008
+Ben Bom
+EMI
+RIVM
+ben.bom@rivm.nl

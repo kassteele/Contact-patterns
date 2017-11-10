@@ -1,0 +1,767 @@
+\documentclass[11pt,twoside,a4paper]{article}
+
+%%%%%%%%%%%
+% Packages
+%%%%%%%%%%%
+
+\usepackage{Sweave}
+\usepackage{amssymb,amsbsy,amsmath,amsfonts,amssymb,amscd, amsthm}
+\usepackage{mathrsfs}
+\usepackage{color, epsfig, graphicx}
+\usepackage{subfigure}
+\usepackage{anysize} % marginsize function
+\usepackage{natbib}
+\usepackage{url}
+
+\marginsize{2.5cm}{2.5cm}{2cm}{4cm}
+\linespread{1.3}
+\bibliographystyle{apalike}
+
+\newcommand{\summ}[2]{\sum _{#1}^{#2}} % Summation symbol
+\newcommand{\prodd}[2]{\prod _{#1}^{#2}} % Product symbol
+\newcommand{\bs}{\boldsymbol} % bold symbom
+
+\title{...}
+\author{...}
+\date{\today}
+
+\SweaveOpts{keep.source=TRUE}
+\SweaveOpts{concordance=TRUE}
+
+%\SweaveOpts{prefix.string=figs/t}
+%\SweaveOpts{eval = FALSE}
+
+\begin{document}
+
+<<echo=false>>=
+options(continue=" ")
+options(prompt="  ")
+@
+
+<<echo = FALSE>>=
+root = "~/projects/prior_sensitivity"
+require(devtools)
+require(testthat)
+require(microbenchmark)
+require(ggplot2)
+require(reshape2)
+require(plyr)
+load_all(file.path(root, "priorSens"))
+source("~/Dropbox/Hallo/Sensitivity20130725/package_plots_MR_R3eps05R64.R")
+@
+
+\section{\texttt{compute\_grid\_polar} function}
+
+
+Setting $\epsilon = 0.05$ and number of grid points to $400$.
+
+<<>>=
+grid_epsilon <- 0.05 # epsilon used in the grid exploration 
+                     # around prior values.
+number_points <- 400  # How many points for a given 
+                      # parameter in the grid exploration
+@
+
+\subsection{Gaussian case}
+
+<<>>=
+mean <- 70  # prior mean 
+prec <- 0.5 # prior precision
+
+<<echo=FALSE>>=
+time1 = Sys.time()
+@
+
+\noindent Without parallel computation:
+<<>>=
+gaussian_grid_polar1 = compute_grid_polar(number_axis_points = number_points, 
+                                          log_prior_density = "gaussian",
+                                          grid_epsilon = grid_epsilon,
+                                          hyperpar = c(mean = mean, prec = prec),
+                                          parallel = FALSE)
+<<echo=FALSE>>=
+time2 = Sys.time()
+print(time2 - time1)
+
+time1 = Sys.time()
+@
+
+\noindent With parallel computation (package multicore). This is the default option.
+<<>>=
+gaussian_grid_polar2 = compute_grid_polar(number_axis_points = number_points, 
+                                          log_prior_density = "gaussian",
+                                          grid_epsilon = grid_epsilon,
+                                          hyperpar = c(mean = mean, prec = prec),
+                                          parallel = TRUE)
+<<echo=FALSE>>=
+time2 = Sys.time()
+print(time2 - time1)
+
+m <- microbenchmark(compute_grid_polar(number_axis_points = number_points, 
+                                       log_prior_density = "gaussian",
+                                       grid_epsilon = grid_epsilon,
+                                       hyperpar = c(mean = mean, prec = prec),
+                                       parallel = FALSE),
+                    
+                    compute_grid_polar(number_axis_points = number_points, 
+                                       log_prior_density = "gaussian",
+                                       grid_epsilon = grid_epsilon,
+                                       hyperpar = c(mean = mean, prec = prec),
+                                       parallel = TRUE), times = 10)
+levels(m[,"expr"]) <- c("noparallel", "parallel")
+
+<<fig=TRUE, echo=FALSE>>=
+autoplot(m)
+@
+
+\noindent Using \texttt{method = "uniroot.all"}:
+
+<<echo=FALSE>>=
+time1 = Sys.time()
+<<>>=
+gaussian_grid_polar3 = compute_grid_polar(number_axis_points = number_points, 
+                                          log_prior_density = "gaussian",
+                                          grid_epsilon = grid_epsilon,
+                                          hyperpar = c(mean = mean, prec = prec),
+                                          parallel = TRUE,
+                                          method = "uniroot.all")
+<<echo=FALSE>>=
+time2 = Sys.time()
+print(time2 - time1)
+
+time1 = Sys.time()
+@
+
+\noindent Using \texttt{method = "uniroot"} (default):
+
+<<>>=
+gaussian_grid_polar4 = compute_grid_polar(number_axis_points = number_points, 
+                                          log_prior_density = "gaussian",
+                                          grid_epsilon = grid_epsilon,
+                                          hyperpar = c(mean = mean, prec = prec),
+                                          parallel = TRUE,
+                                          method = "uniroot")
+<<echo=FALSE>>=
+time2 = Sys.time()
+print(time2 - time1)
+@
+
+\noindent Using \texttt{method = "nlminb"}:
+
+<<echo=FALSE>>=
+time1 = Sys.time()
+<<>>=
+gaussian_grid_polar5 = compute_grid_polar(number_axis_points = number_points, 
+                                          log_prior_density = "gaussian",
+                                          grid_epsilon = grid_epsilon,
+                                          hyperpar = c(mean = mean, prec = prec),
+                                          parallel = TRUE,
+                                          method = "nlminb")
+<<echo=FALSE>>=
+time2 = Sys.time()
+print(time2 - time1)
+@
+
+A high value below means something is wrong:
+
+<<echo=FALSE>>=
+grid_list <- list(gaussian_grid_polar1 = gaussian_grid_polar1,
+                  gaussian_grid_polar2 = gaussian_grid_polar2, 
+                  gaussian_grid_polar3 = gaussian_grid_polar3, 
+                  gaussian_grid_polar4 = gaussian_grid_polar4,
+                  gaussian_grid_polar5 = gaussian_grid_polar5)
+f <- function(x) max(abs(as.numeric(gaussian_grid_polar1$polar) - as.numeric(x$polar)))
+lapply(grid_list, FUN=f)
+
+@
+
+<<fig=TRUE, echo=FALSE>>=
+plot(gaussian_grid_polar1$cartesian, col = 1)
+points(gaussian_grid_polar2$cartesian, col = 2)
+points(gaussian_grid_polar3$cartesian, col = 3)
+points(gaussian_grid_polar4$cartesian, col = 4)
+points(gaussian_grid_polar5$cartesian, col = 5)
+@
+
+<<echo=FALSE>>=
+m <- microbenchmark(compute_grid_polar(number_axis_points = number_points, 
+                                          log_prior_density = "gaussian",
+                                          grid_epsilon = grid_epsilon,
+                                          hyperpar = c(mean = mean, prec = prec),
+                                          parallel = TRUE,
+                                          method = "uniroot.all",
+                                          search_interval = c(-1, 1)),
+                    
+                    compute_grid_polar(number_axis_points = number_points, 
+                                          log_prior_density = "gaussian",
+                                          grid_epsilon = grid_epsilon,
+                                          hyperpar = c(mean = mean, prec = prec),
+                                          parallel = TRUE,
+                                          method = "uniroot",
+                                          search_interval = c(-1, 1)),
+                    
+                    compute_grid_polar(number_axis_points = number_points, 
+                                          log_prior_density = "gaussian",
+                                          grid_epsilon = grid_epsilon,
+                                          hyperpar = c(mean = mean, prec = prec),
+                                          parallel = TRUE,
+                                          method = "nlminb"), times = 10)
+levels(m[,"expr"]) <- c("uniroot.all", "uniroot", "nlminb")
+
+<<fig=TRUE, echo=FALSE>>=
+autoplot(m)
+@
+
+<<echo=FALSE>>=
+
+grid_points_seq = seq(100, 400, by = 20)
+times <- numeric(length(grid_points_seq))
+for (i in 1:length(grid_points_seq)){
+
+  time1 = Sys.time()
+  gaussian_grid_polar1 = compute_grid_polar(number_axis_points = grid_points_seq[i], 
+                                            log_prior_density = "gaussian",
+                                            grid_epsilon = grid_epsilon,
+                                            hyperpar = c(mean = mean, prec = prec),
+                                            parallel = FALSE)
+  time2 = Sys.time()
+  times[i] <- as.numeric(time2 - time1)
+  
+}
+@
+
+<<fig=TRUE, echo=FALSE>>=
+plot(grid_points_seq, times, type="l", xlab="number of grid points", ylab = "time in sec.")
+@
+
+\subsection{Gamma case}
+
+<<>>=
+shape = 0.5 # prior shape
+rate = 0.01 # prior rate
+
+<<echo=FALSE>>=
+time1 = Sys.time()
+@
+
+\noindent Without parallel computation:
+<<>>=
+gamma_grid_polar1 = compute_grid_polar(number_axis_points = number_points, 
+                                          log_prior_density = "gamma",
+                                          grid_epsilon = grid_epsilon,
+                                          hyperpar = c(shape = shape, rate = rate),
+                                          parallel = FALSE)
+<<echo=FALSE>>=
+time2 = Sys.time()
+print(time2 - time1)
+
+time1 = Sys.time()
+@
+
+\noindent With parallel computation (package multicore). This is the default option.
+<<>>=
+gamma_grid_polar2 = compute_grid_polar(number_axis_points = number_points, 
+                                          log_prior_density = "gamma",
+                                          grid_epsilon = grid_epsilon,
+                                          hyperpar = c(shape = shape, rate = rate),
+                                          parallel = TRUE)
+<<echo=FALSE>>=
+time2 = Sys.time()
+print(time2 - time1)
+
+m <- microbenchmark(compute_grid_polar(number_axis_points = number_points, 
+                                       log_prior_density = "gamma",
+                                       grid_epsilon = grid_epsilon,
+                                       hyperpar = c(shape = shape, rate = rate),
+                                       parallel = FALSE),
+                    
+                    compute_grid_polar(number_axis_points = number_points, 
+                                       log_prior_density = "gamma",
+                                       grid_epsilon = grid_epsilon,
+                                       hyperpar = c(shape = shape, rate = rate),
+                                       parallel = TRUE), times = 10)
+levels(m[,"expr"]) <- c("noparallel", "parallel")
+
+<<fig=TRUE, echo=FALSE>>=
+autoplot(m)
+@
+
+\noindent Using \texttt{method = "uniroot.all"}:
+
+<<echo=FALSE>>=
+time1 = Sys.time()
+<<>>=
+gamma_grid_polar3 = compute_grid_polar(number_axis_points = number_points, 
+                                          log_prior_density = "gamma",
+                                          grid_epsilon = grid_epsilon,
+                                          hyperpar = c(shape = shape, rate = rate),
+                                          parallel = TRUE,
+                                          method = "uniroot.all")
+<<echo=FALSE>>=
+time2 = Sys.time()
+print(time2 - time1)
+
+time1 = Sys.time()
+@
+
+\noindent Using \texttt{method = "uniroot"} (default):
+
+<<>>=
+gamma_grid_polar4 = compute_grid_polar(number_axis_points = number_points, 
+                                          log_prior_density = "gamma",
+                                          grid_epsilon = grid_epsilon,
+                                          hyperpar = c(shape = shape, rate = rate),
+                                          parallel = TRUE,
+                                          method = "uniroot")
+<<echo=FALSE>>=
+time2 = Sys.time()
+print(time2 - time1)
+@
+
+\noindent Using \texttt{method = "nlminb"}:
+
+<<echo=FALSE>>=
+time1 = Sys.time()
+<<>>=
+gamma_grid_polar5 = compute_grid_polar(number_axis_points = number_points, 
+                                          log_prior_density = "gamma",
+                                          grid_epsilon = grid_epsilon,
+                                          hyperpar = c(shape = shape, rate = rate),
+                                          parallel = TRUE,
+                                          method = "nlminb")
+<<echo=FALSE>>=
+time2 = Sys.time()
+print(time2 - time1)
+@
+
+A high value below means something is wrong:
+
+<<echo=FALSE>>=
+grid_list <- list(gamma_grid_polar1 = gamma_grid_polar1,
+                  gamma_grid_polar2 = gamma_grid_polar2, 
+                  gamma_grid_polar3 = gamma_grid_polar3, 
+                  gamma_grid_polar4 = gamma_grid_polar4,
+                  gamma_grid_polar5 = gamma_grid_polar5)
+f <- function(x) max(abs(as.numeric(gamma_grid_polar1$polar) - as.numeric(x$polar)))
+lapply(grid_list, FUN=f)
+
+@
+
+<<fig=TRUE, echo=FALSE>>=
+plot(gamma_grid_polar1$cartesian, col = 1)
+points(gamma_grid_polar2$cartesian, col = 2)
+points(gamma_grid_polar3$cartesian, col = 3)
+points(gamma_grid_polar4$cartesian, col = 4)
+points(gamma_grid_polar5$cartesian, col = 5)
+@
+
+<<echo=FALSE>>=
+m <- microbenchmark(compute_grid_polar(number_axis_points = number_points, 
+                                          log_prior_density = "gamma",
+                                          grid_epsilon = grid_epsilon,
+                                          hyperpar = c(shape = shape, rate = rate),
+                                          parallel = TRUE,
+                                          method = "uniroot.all",
+                                          search_interval = c(-1, 1)),
+                    
+                    compute_grid_polar(number_axis_points = number_points, 
+                                          log_prior_density = "gamma",
+                                          grid_epsilon = grid_epsilon,
+                                          hyperpar = c(shape = shape, rate = rate),
+                                          parallel = TRUE,
+                                          method = "uniroot",
+                                          search_interval = c(-1, 1)),
+                    
+                    compute_grid_polar(number_axis_points = number_points, 
+                                          log_prior_density = "gamma",
+                                          grid_epsilon = grid_epsilon,
+                                          hyperpar = c(shape = shape, rate = rate),
+                                          parallel = TRUE,
+                                          method = "nlminb"), times = 10)
+levels(m[,"expr"]) <- c("uniroot.all", "uniroot", "nlminb")
+
+<<fig=TRUE, echo=FALSE>>=
+autoplot(m)
+@
+
+<<echo=FALSE>>=
+
+grid_points_seq = seq(100, 400, by = 20)
+times <- numeric(length(grid_points_seq))
+for (i in 1:length(grid_points_seq)){
+
+  time1 = Sys.time()
+  gamma_grid_polar1 = compute_grid_polar(number_axis_points = grid_points_seq[i], 
+                                            log_prior_density = "gamma",
+                                            grid_epsilon = grid_epsilon,
+                                            hyperpar = c(shape = shape, rate = rate),
+                                            parallel = FALSE)
+  time2 = Sys.time()
+  times[i] <- as.numeric(time2 - time1)
+  
+}
+@
+
+<<fig=TRUE, echo=FALSE>>=
+plot(grid_points_seq, times, type="l", xlab="number of grid points", ylab = "time in sec.")
+@
+
+\subsection{gamma user-defined case}
+
+<<>>=
+shape = 0.5 # prior shape
+rate = 0.01 # prior rate
+
+log_loggamma <- function(x, hyperpar){
+  dgamma(exp(x), shape = exp(hyperpar[1]), rate = exp(hyperpar[2]), log = TRUE) + x
+}
+
+<<echo=FALSE>>=
+time1 = Sys.time()
+@
+
+\noindent Without parallel computation:
+<<>>=
+gamma_user_grid_polar1 = compute_grid_polar(number_axis_points = number_points, 
+                                            log_prior_density = log_loggamma,
+                                            grid_epsilon = grid_epsilon,
+                                            hyperpar = c(log(shape), log(rate)),
+                                            parallel = FALSE)
+<<echo=FALSE>>=
+time2 = Sys.time()
+print(time2 - time1)
+
+time1 = Sys.time()
+
+<<>>=
+gamma_user_grid_polar1_1 = compute_grid_polar(number_axis_points = number_points, 
+                                              log_prior_density = log_loggamma,
+                                              grid_epsilon = grid_epsilon,
+                                              hyperpar = c(log(shape), log(rate)),
+                                              integration_method = "integrate",
+                                              domain = "compute_domain",
+                                              parallel = FALSE)
+<<echo=FALSE>>=
+time2 = Sys.time()
+print(time2 - time1)
+
+time1 = Sys.time()
+
+<<>>=
+gamma_user_grid_polar1_2 = compute_grid_polar(number_axis_points = number_points, 
+                                              log_prior_density = log_loggamma,
+                                              grid_epsilon = grid_epsilon,
+                                              hyperpar = c(log(shape), log(rate)),
+                                              integration_method = "simpson13rule",
+                                              domain = "compute_domain",
+                                              parallel = FALSE)
+<<echo=FALSE>>=
+time2 = Sys.time()
+print(time2 - time1)
+
+time1 = Sys.time()
+@
+
+
+\noindent With parallel computation (package multicore). This is the default option.
+<<>>=
+gamma_user_grid_polar2 = compute_grid_polar(number_axis_points = number_points, 
+                                            log_prior_density = log_loggamma,
+                                            grid_epsilon = grid_epsilon,
+                                            hyperpar = c(log(shape), log(rate)),
+                                            parallel = TRUE)
+
+
+<<echo=FALSE>>=
+time2 = Sys.time()
+print(time2 - time1)
+@
+ 
+% m <- microbenchmark(compute_grid_polar(number_axis_points = number_points, 
+%                                           log_prior_density = log_gamma,
+%                                           grid_epsilon = grid_epsilon,
+%                                           hyperpar = c(log(shape), log(rate)),
+%                                           parallel = FALSE),
+%                     
+%                     compute_grid_polar(number_axis_points = number_points, 
+%                                           log_prior_density = log_gamma,
+%                                           grid_epsilon = grid_epsilon,
+%                                           hyperpar = c(log(shape), log(rate)),
+%                                           parallel = TRUE), times = 10)
+% levels(m[,"expr"]) <- c("noparallel", "parallel")
+% 
+% <<fig=TRUE, echo=FALSE>>=
+% autoplot(m)
+% @
+
+
+\section*{Example 1: Gaussian prior}
+
+<<echo=FALSE>>=
+require(INLA)
+
+mm0<-70; ll0<-0.5; nn<-4; kk<-1; mh<-76
+
+n <-nn
+const<-rep(1,n)
+kappa<-kk
+sd.kappa<-sqrt(1/kappa)
+mu.dat<-mh
+set.seed(100)
+y = rnorm(n,mu.dat,sd.kappa)
+y<-y-mean(y)+mu.dat
+ex1.data<-data.frame(y,const)
+
+# Running INLA
+#--------------
+
+ex1.m0l0 = inla(y ~ const-1, data = ex1.data,
+                control.fixed=list(mean=list(const=mm0),prec=list(const=ll0)), 
+                control.family = list(hyper = list(prec = list(initial=log(kk),fixed=TRUE))),
+                num.threads=1)
+
+inla_marginal_posterior <- ex1.m0l0$"marginals.fixed"$"const" # marginal posterior density at (mm0,ll0)
+@
+
+<<echo=FALSE>>=
+time1 = Sys.time()
+<<>>=
+inla_sens_gaussian = compute_sensitivity(
+  grid = gaussian_grid_polar2,
+  inla_marginal_posterior = inla_marginal_posterior)
+<<echo=FALSE>>=
+time2 = Sys.time()
+print(time2 - time1)
+
+max_inla_sens_gaussian = max(inla_sens_gaussian$sensitivity[,"sensitivity"])
+print(max_inla_sens_gaussian)
+
+if (isTRUE(all.equal(max_inla_sens_gaussian, 1.970, tolerance = 1e-2))){
+  cat("Accurate max sensitivity.")
+} else {
+  cat("Problem in max sensitivity.")
+}
+
+time1 = Sys.time()
+<<>>=
+
+inla_sens_gaussian = prior_sensitivity(
+  log_prior_density = "gaussian",
+  hyperpar = c(mean = 70, prec = 0.5),
+  inla_marginal_posterior = inla_marginal_posterior)
+<<echo=FALSE>>=
+time2 = Sys.time()
+print(time2 - time1)
+
+max_inla_sens_gaussian = max(inla_sens_gaussian$sensitivity[,"sensitivity"])
+print(max_inla_sens_gaussian)
+if (isTRUE(all.equal(max_inla_sens_gaussian, 1.970, tolerance = 1e-2))){
+  cat("Accurate max sensitivity.")
+} else {
+  cat("Problem in max sensitivity.")
+}
+
+# expect_identical(sensitivity_obj$polar_grid, gaussian_grid_polar)
+# expect_identical(sensitivity_obj$sensitivity, inla_sens_gaussian$sensitivity)
+# expect_equal(max(sensitivity_obj$sensitivity[,"sensitivity"]), 1.970, tolerance = 1e-2)
+
+@
+% 
+% <<echo=FALSE>>=
+% 
+% source("~/Dropbox/Hallo/Sensitivity20130725/package_plots_MR_R3eps05R64.R")
+% 
+% <<fig=TRUE>>=
+% plot_grid_aspect(grid_obj = gaussian_grid_polar, xname = NULL, yname = NULL)
+% 
+% <<fig=TRUE>>=
+% plot_grid_no_aspect(grid_obj = gaussian_grid_polar, xname = NULL, yname = NULL)
+% 
+% <<fig=TRUE>>=
+% plot_polar_sens(sens_obj = inla_sens_gaussian$sensitivity,
+%                 angle_shift = NULL,
+%                 modulus_scale = NULL,
+%                 xname = NULL,
+%                 yname = NULL)
+% 
+% <<fig=TRUE>>=
+% plot_line_sens(sens_obj = inla_sens_gaussian$sensitivity)
+% @
+
+\section*{Example 2: Gamma prior}
+
+<<echo=FALSE>>=
+
+## Parameters for the model in Ex2
+aa0<-0.5
+bb0<-0.01
+n <- 10
+m <- 2
+sigma2.ML<-0.035
+ntsigma2.ML<-n*sigma2.ML
+set.seed(100)
+y <- rnorm(n, mean = m, sd = sqrt(bb0 / aa0))
+y <- m + sqrt(sigma2.ML) * (y - mean(y)) / (sqrt((n - 1) / n) * sd(y))
+stopifnot(all.equal(ntsigma2.ML,
+                    sum((y - m)^2)))
+ex2.data <- data.frame(y, const=1)
+ex2.a0b0 <- inla(y ~ -1 + const,
+                 data = ex2.data,
+                 control.fixed=list(mean=list(const=m),prec=list(const=1e12)),
+                 control.family=list(hyper =list(prec =list(prior="loggamma",param=c(aa0, bb0)))),
+                 control.compute=list(hyperpar=TRUE),
+                 control.predictor = list(initial = 15),
+                 num.threads=1)
+ex2.a0b0.hyp <- inla.hyperpar(ex2.a0b0, dz = 0.25, diff.logdens = 15)
+
+ex2.post.log.a0b0<-ex2.a0b0.hyp$"internal.marginals.hyperpar"$`Log precision for the Gaussian observations`
+exact_posterior <- cbind(ex2.post.log.a0b0[,1], dgamma(exp(ex2.post.log.a0b0[,1]), shape = aa0 + n/2, rate = bb0 + 0.5 * ntsigma2.ML) * exp(ex2.post.log.a0b0[,1]))
+
+# Computing sensibility
+#-----------------------
+time1 = Sys.time()
+
+<<>>=
+inla_sens_gamma = compute_sensitivity(
+  grid = gamma_grid_polar2,
+  inla_marginal_posterior = ex2.post.log.a0b0)
+
+<<echo=FALSE>>=
+time2 = Sys.time()
+print(time2 - time1)
+
+max_inla_sens_gamma = max(inla_sens_gamma$sensitivity[,"sensitivity"])
+
+print(max_inla_sens_gamma)
+
+if (isTRUE(all.equal(max_inla_sens_gamma, 0.2135015, tolerance = 1e-3))){
+  cat("Accurate max sensitivity.")
+} else {
+  cat("Problem in max sensitivity.")
+}
+
+time1 = Sys.time()
+<<>>=
+
+inla_sens_gamma = prior_sensitivity(
+  log_prior_density = "gamma",
+  hyperpar = c(shape = 0.5, rate = 0.01),
+  inla_marginal_posterior = ex2.post.log.a0b0)
+
+<<echo=FALSE>>=
+time2 = Sys.time()
+print(time2 - time1)
+
+max_inla_sens_gamma = max(inla_sens_gamma$sensitivity[,"sensitivity"])
+print(max_inla_sens_gamma)
+if (isTRUE(all.equal(max_inla_sens_gamma, 0.2135015, tolerance = 1e-3))){
+  cat("Accurate max sensitivity.")
+} else {
+  cat("Problem in max sensitivity.")
+}
+
+@
+% <<>>=
+% print(time2 - time1)
+% 
+% source("~/Dropbox/Hallo/Sensitivity20130725/package_plots_MR_R3eps05R64.R")
+% 
+% <<fig=TRUE>>=
+% plot_grid_aspect(grid_obj = gamma_grid_polar, xname = NULL, yname = NULL)
+% 
+% <<fig=TRUE>>=
+% plot_grid_no_aspect(grid_obj = gamma_grid_polar, xname = NULL, yname = NULL)
+% 
+% <<fig=TRUE>>=
+% plot_polar_sens(sens_obj = inla_sens_gamma$sensitivity,
+%                 angle_shift = NULL,
+%                 modulus_scale = NULL,
+%                 xname = NULL,
+%                 yname = NULL)
+% 
+% <<fig=TRUE>>=
+% plot_line_sens(sens_obj = inla_sens_gamma$sensitivity)
+% @
+
+\section*{Example 3: user-defined gamma prior}
+
+<<echo=FALSE>>=
+
+## Parameters for the model in Ex2
+aa0<-0.5
+bb0<-0.01
+n <- 10
+m <- 2
+sigma2.ML<-0.035
+ntsigma2.ML<-n*sigma2.ML
+set.seed(100)
+y <- rnorm(n, mean = m, sd = sqrt(bb0 / aa0))
+y <- m + sqrt(sigma2.ML) * (y - mean(y)) / (sqrt((n - 1) / n) * sd(y))
+stopifnot(all.equal(ntsigma2.ML,
+                    sum((y - m)^2)))
+ex2.data <- data.frame(y, const=1)
+ex2.a0b0 <- inla(y ~ -1 + const,
+                 data = ex2.data,
+                 control.fixed=list(mean=list(const=m),prec=list(const=1e12)),
+                 control.family=list(hyper =list(prec =list(prior="loggamma",param=c(aa0, bb0)))),
+                 control.compute=list(hyperpar=TRUE),
+                 control.predictor = list(initial = 15),
+                 num.threads=1)
+ex2.a0b0.hyp <- inla.hyperpar(ex2.a0b0, dz = 0.25, diff.logdens = 15)
+
+ex2.post.log.a0b0<-ex2.a0b0.hyp$"internal.marginals.hyperpar"$`Log precision for the Gaussian observations`
+exact_posterior <- cbind(ex2.post.log.a0b0[,1], dgamma(exp(ex2.post.log.a0b0[,1]), shape = aa0 + n/2, rate = bb0 + 0.5 * ntsigma2.ML) * exp(ex2.post.log.a0b0[,1]))
+
+# Computing sensibility
+#-----------------------
+time1 = Sys.time()
+
+<<>>=
+inla_sens_user_gamma = compute_sensitivity(
+  grid = gamma_user_grid_polar2,
+  inla_marginal_posterior = ex2.post.log.a0b0)
+
+<<echo=FALSE>>=
+time2 = Sys.time()
+print(time2 - time1)
+
+max_inla_sens_user_gamma = max(inla_sens_user_gamma$sensitivity[,"sensitivity"])
+
+print(max_inla_sens_user_gamma)
+
+if (isTRUE(all.equal(max_inla_sens_user_gamma, 0.2135015, tolerance = 1e-2))){
+  cat("Accurate max sensitivity.")
+} else {
+  cat("Problem in max sensitivity.")
+}
+
+shape = 0.5 # prior shape
+rate = 0.01 # prior rate
+
+log_loggamma <- function(x, hyperpar){
+  dgamma(exp(x), shape = exp(hyperpar[1]), rate = exp(hyperpar[2]), log = TRUE) + x
+}
+
+time1 = Sys.time()
+<<>>=
+
+inla_sens_user_gamma = prior_sensitivity(
+  log_prior_density = log_loggamma,
+  hyperpar = c(log(shape), log(rate)),
+  inla_marginal_posterior = ex2.post.log.a0b0)
+
+<<echo=FALSE>>=
+time2 = Sys.time()
+print(time2 - time1)
+
+max_inla_sens_user_gamma = max(inla_sens_user_gamma$sensitivity[,"sensitivity"])
+print(max_inla_sens_user_gamma)
+if (isTRUE(all.equal(max_inla_sens_user_gamma, 0.2135015, tolerance = 1e-2))){
+  cat("Accurate max sensitivity.")
+} else {
+  cat("Problem in max sensitivity.")
+}
+
+@
+
+\end{document}

@@ -1,0 +1,167 @@
+# Changes in version 0.1.2
+
+- The default value for 'grid_epsilon' is now 0.00354 and the test cases were 
+  updated and are now being dynamically computed.
+
+- Default for search_interval is now c(-3,2) in the function 'compute_roots_r_given_thetas'.
+
+- An error will be issued in case there are NAs in the grid. In this case the user should
+  change optmization parameters like 'method' or 'search_interval' to get rid of the NAs
+
+- Addition of the argument 'mean_prior_density' in 'compute_grid_polar' to make
+  user defined cases more robust.
+
+- For user defined cases integration_method = "integrate".
+
+- The four polar coordinate points used in the exploration of the grid are now included in the resulting object.
+
+# Changes in version 0.1.1
+
+The package will not depend on the multocore package anymore. It will use it
+if available, otherwise it will run anyway.
+
+# Changes in version 0.1.0
+
+#--------------------------------------------------------------------------------------
+# Running tests:
+
+require(devtools)
+require(testthat)
+load_all("priorSens", reset = FALSE)
+test_package("priorSens")
+
+#--------------------------------------------------------------------------------------
+
+# 'compute_grid_polar' function: Computes a "grid" object.
+
+# By default, the following arguments are used:
+
+# - 'number_axis_points' = 200: Number of points in the grid
+# - 'grid_epsilon' = 0.05: epsilon used in the grid. 
+# - 'parallel' = TRUE: Use 'multicore' package to parallellize the grid exploration.
+# - 'method' = "uniroot": Other methods currently available are 'nlminb' and 'uniroot.all'.
+# - 'coord_explr_method' = "nlminb": This is technical, just using a more accurate (and expensive)
+# method to obtain the first 4 points of the grid in the exploration phase.
+# - 'coord_explr_method_options' = NULL: Further arguments passed to 'coord_explr_method' method.
+# - 'integration_method' = "simpson13rule": Method used when we need to numerically integrate the
+# Hellinger Distance. Other method available is 'integrate' which is more accurate (and expensive)
+# - 'domain' = "compute_domain": In case the user do not specify the integration region, we will
+# compute low and high quantiles to use as integration end-points. Another option is to use
+# 'integration_method' = "integrate" and 'domain' = c(-Inf, Inf) but this is expensive.
+# - 'number_points' = 100: Number of points used for the Simpson integration rule, i.e. valid
+# when 'integration_method' = "simpson13rule".
+
+# Minimal call:
+
+# - Gaussian case:
+gaussian_grid_polar = compute_grid_polar(log_prior_density = "gaussian",
+                                         hyperpar = c(mean = 70, prec = 0.5))
+
+# - Gamma case:
+gamma_grid_polar = compute_grid_polar(log_prior_density = "gamma",
+                                      hyperpar = c(shape = 0.5, rate = 0.01))
+
+# - user-defined case: Gamma example
+
+# The user needs to provide a function log_f(x, hyperpar), which is the log of the density f of theta, 
+# where theta is defined on the real line, which can be obtained after a suitable transformation. 
+# 'hyperpar' should be a numeric vector where each element is defined on the real line. 
+# For example, if X ~ Gamma(a, b) we use theta = log(X) and hyperpar = c(log(a), log(b)), since a, b > 0.
+
+shape = 0.5 # prior shape
+rate = 0.01 # prior rate
+log_f <- function(x, hyperpar){
+  dgamma(exp(x), shape = exp(hyperpar[1]), rate = exp(hyperpar[2]), log = TRUE) + x
+}
+
+user_defined_gamma_grid_polar = compute_grid_polar(log_prior_density = log_f,
+                                                   hyperpar = c(log(shape), log(rate)))
+
+# Note: 'user_defined_gamma_grid_polar' should be close to 'gamma_grid_polar', although
+# it was more expensive to obtain it since we had to use numerical integration.
+
+# Future improvement: Approx. 87% of the time is allocated to the root finding method.
+# Check possible improvements later.
+
+#--------------------------------------------------------------------------------------
+
+# 'compute_sensitivity' function: Given a grid object it computes sensitivity measures 
+# for every point in the grid
+
+# By default, the following arguments are used:
+
+# - 'method' = "simpson13rule": Integration method used to compute the normalization 
+# cte of the corrected posteriors.
+# - 'method_hellinger' = "simpson13rule": Integration method used within the 
+# 'compute_hellinger_distance_inla' function.
+# - 'integration_limits' = TRUE: If TRUE, it uses the 10% rule for integration limits, 
+# otherwise uses c(-Inf, Inf). This argument is used only if the arguments 'method' 
+# and/or 'method_hellinger' is set to 'integrate'.
+
+# Minimal call:
+
+# - Gaussian case:
+inla_sens_gaussian = compute_sensitivity(grid = gaussian_grid_polar,
+                                         inla_marginal_posterior = inla_marginal_posterior)
+
+# - Gamma case:
+inla_sens_gamma = compute_sensitivity(grid = gamma_grid_polar,
+                                      inla_marginal_posterior = inla_marginal_posterior)
+
+# - user-defined case: Gamma example
+inla_sens_user_gamma = compute_sensitivity(grid = user_defined_gamma_grid_polar,
+                                           inla_marginal_posterior = inla_marginal_posterior)
+
+# Future improvement: The majority of time (about 85%) is spent at the integration function 
+# 'simp13rule_matrix'. Check possible improvements later.
+
+#--------------------------------------------------------------------------------------
+# 'prior_sensitivity' function: Computes both the grid and the sensitvity values of a given
+# prior distribution.
+
+# By default, the following arguments are used:
+
+# - 'number_axis_points' = 200: Number of points in the grid
+# - 'grid_epsilon' = 0.05: epsilon used in the grid. 
+# - 'parallel' = TRUE: Use 'multicore' package to parallellize the grid exploration.
+# - 'method' = "uniroot": Other methods currently available are 'nlminb' and 'uniroot.all'.
+# - 'coord_explr_method' = "nlminb": This is technical, just using a more accurate (and expensive)
+# method to obtain the first 4 points of the grid in the exploration phase.
+# - 'coord_explr_method_options' = NULL: Further arguments passed to 'coord_explr_method' method.
+# - 'integration_grid_method' = "simpson13rule": Method used when we need to numerically integrate the
+# Hellinger Distance necessary for the grid exploration. Other method available is 'integrate' which is more accurate (and expensive)
+# - 'domain' = "compute_domain": In case the user do not specify the integration region, we will
+# compute low and high quantiles to use as integration end-points. Another option is to use
+# - 'number_points' = 100: Number of points used for the Simpson integration rule, i.e. valid
+# when 'integration_grid_method' = "simpson13rule".
+# - 'integration_correc_post_method' = "simpson13rule": Integration method used to compute the normalization 
+# cte of the corrected posteriors.
+# - 'integration_inla_method' = "simpson13rule": Integration method used within the 
+# 'compute_hellinger_distance_inla' function.
+# - 'integration_limits' = TRUE: If TRUE, it uses the 10% rule for integration limits, 
+# otherwise uses c(-Inf, Inf). This argument is used only if the arguments 'integration_correc_post_method' 
+# and/or 'integration_inla_method' is set to 'integrate'.
+
+
+# Minimal call:
+
+# - Gaussian case:
+inla_sens_gaussian = prior_sensitivity(log_prior_density = "gaussian",
+                                       hyperpar = c(mean = 70, prec = 0.5),
+                                       inla_marginal_posterior = inla_marginal_posterior)
+
+# - Gamma case:
+inla_sens_gamma = prior_sensitivity(log_prior_density = "gamma",
+                                    hyperpar = c(shape = 0.5, rate = 0.01),
+                                    inla_marginal_posterior = inla_marginal_posterior)
+
+# - user-defined case: Gamma example
+
+inla_sens_user_gamma = prior_sensitivity(log_prior_density = log_loggamma,
+                                         hyperpar = c(log(shape), log(rate)),
+                                         inla_marginal_posterior = ex2.post.log.a0b0)
+
+
+# Note: When I tried to set the default grid_epsilon to 0.00354, errors have happened on my test
+# cases so I set it back to 0.05.
+  

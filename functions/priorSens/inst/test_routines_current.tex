@@ -1,0 +1,87 @@
+\documentclass[11pt,twoside,a4paper]{article}
+
+%%%%%%%%%%%
+% Packages
+%%%%%%%%%%%
+
+\usepackage{Sweave}
+\usepackage{amssymb,amsbsy,amsmath,amsfonts,amssymb,amscd, amsthm}
+\usepackage{mathrsfs}
+\usepackage{color, epsfig, graphicx}
+\usepackage{subfigure}
+\usepackage{anysize} % marginsize function
+\usepackage{natbib}
+\usepackage{url}
+
+\marginsize{2.5cm}{2.5cm}{2cm}{4cm}
+\linespread{1.3}
+\bibliographystyle{apalike}
+
+\newcommand{\summ}[2]{\sum _{#1}^{#2}} % Summation symbol
+\newcommand{\prodd}[2]{\prod _{#1}^{#2}} % Product symbol
+\newcommand{\bs}{\boldsymbol} % bold symbom
+
+\title{...}
+\author{...}
+\date{\today}
+
+
+\input{test_routines_current-concordance}
+
+%\SweaveOpts{prefix.string=figs/t}
+%\SweaveOpts{eval = FALSE}
+
+\begin{document}
+
+
+
+\section{\texttt{compute\_grid\_polar} function}
+
+
+Setting $\epsilon = 0.05$ and number of grid points to $400$.
+
+\begin{Schunk}
+\begin{Sinput}
+  grid_epsilon <- 0.05 # epsilon used in the grid exploration 
+                       # around prior values.
+  number_points <- 400  # How many points for a given 
+                        # parameter in the grid exploration
+\end{Sinput}
+\end{Schunk}
+
+\subsection{Gaussian case}
+
+\begin{Schunk}
+\begin{Sinput}
+  mean <- 70  # prior mean 
+  prec <- 0.5 # prior precision
+  
+\end{Sinput}
+\end{Schunk}
+
+\noindent Without parallel computation:
+\begin{Schunk}
+\begin{Sinput}
+  gaussian_grid_polar1 = compute_grid_polar(number_axis_points = number_points, 
+                                           log_prior_density = "gaussian",
+                                           grid_epsilon = grid_epsilon,
+                                           hyperpar = c(mean = mean, prec = prec),
+                                           parallel = FALSE)
+\end{Sinput}
+\end{Schunk}
+\begin{Schunk}
+\begin{Soutput}
+Time difference of 0.3182766 secs
+\end{Soutput}
+\end{Schunk}
+
+\noindent With parallel computation (package multicore). This is the default option.
+\begin{Schunk}
+\begin{Sinput}
+  gaussian_grid_polar2 = compute_grid_polar(number_axis_points = number_points, 
+                                           log_prior_density = "gaussian",
+                                           grid_epsilon = grid_epsilon,
+                                           hyperpar = c(mean = mean, prec = prec),
+                                           parallel = TRUE)
+\end{Sinput}
+\end{Schunk}

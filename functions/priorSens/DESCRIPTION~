@@ -1,0 +1,12 @@
+Package: priorSens
+Type: Package
+Title: Prior sensitivity with respect to hyperparameters
+Version: 0.1.1
+Date: 2013-10-29
+Author: Thiago Guerrera Martins
+Maintainer: Thiago Guerrera Martins <thiago.guerrera@math.ntnu.no>
+Description: Prior sensitivity with respect to hyperparameters in Latent Gaussian Models
+License: GPL (>= 2)
+Depends: INLA, rootSolve, compiler, Rcpp
+LinkingTo: Rcpp
+LazyLoad: yes

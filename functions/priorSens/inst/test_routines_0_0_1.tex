@@ -1,0 +1,99 @@
+\documentclass{article}
+
+\usepackage{Sweave}
+\begin{document}
+\input{test_routines_0_0_1-concordance}
+
+\section*{Example 1}
+
+\begin{Schunk}
+\begin{Sinput}
+> print(time2 - time1)
+\end{Sinput}
+\begin{Soutput}
+Time difference of 1.568264 mins
+\end{Soutput}
+\begin{Sinput}
+> source("~/Dropbox/Hallo/Sensitivity20130725/package_plots_MR_R3eps05R64.R")
+> 
+\end{Sinput}
+\end{Schunk}
+\begin{Schunk}
+\begin{Sinput}
+> plot_grid_aspect(grid_obj = gaussian_grid_polar, xname = NULL, yname = NULL)
+> 
+\end{Sinput}
+\end{Schunk}
+\includegraphics{test_routines_0_0_1-003}
+\begin{Schunk}
+\begin{Sinput}
+> plot_grid_no_aspect(grid_obj = gaussian_grid_polar, xname = NULL, yname = NULL)
+> 
+\end{Sinput}
+\end{Schunk}
+\includegraphics{test_routines_0_0_1-004}
+\begin{Schunk}
+\begin{Sinput}
+> plot_polar_sens(sens_obj = inla_sens_gaussian$sensitivity,
++                 angle_shift = NULL,
++                 modulus_scale = NULL,
++                 xname = NULL,
++                 yname = NULL)
+> 
+\end{Sinput}
+\end{Schunk}
+\includegraphics{test_routines_0_0_1-005}
+\begin{Schunk}
+\begin{Sinput}
+> plot_line_sens(sens_obj = inla_sens_gaussian$sensitivity)
+\end{Sinput}
+\end{Schunk}
+\includegraphics{test_routines_0_0_1-006}
+
+\section*{Example 2}
+
+\begin{Schunk}
+\begin{Sinput}
+> print(time2 - time1)
+\end{Sinput}
+\begin{Soutput}
+Time difference of 33.36136 secs
+\end{Soutput}
+\begin{Sinput}
+> source("~/Dropbox/Hallo/Sensitivity20130725/package_plots_MR_R3eps05R64.R")
+> 
+\end{Sinput}
+\end{Schunk}
+\begin{Schunk}
+\begin{Sinput}
+> plot_grid_aspect(grid_obj = gamma_grid_polar, xname = NULL, yname = NULL)
+> 
+\end{Sinput}
+\end{Schunk}
+\includegraphics{test_routines_0_0_1-009}
+\begin{Schunk}
+\begin{Sinput}
+> plot_grid_no_aspect(grid_obj = gamma_grid_polar, xname = NULL, yname = NULL)
+> 
+\end{Sinput}
+\end{Schunk}
+\includegraphics{test_routines_0_0_1-010}
+\begin{Schunk}
+\begin{Sinput}
+> plot_polar_sens(sens_obj = inla_sens_gamma$sensitivity,
++                 angle_shift = NULL,
++                 modulus_scale = NULL,
++                 xname = NULL,
++                 yname = NULL)
+> 
+\end{Sinput}
+\end{Schunk}
+\includegraphics{test_routines_0_0_1-011}
+\begin{Schunk}
+\begin{Sinput}
+> plot_line_sens(sens_obj = inla_sens_gamma$sensitivity)
+\end{Sinput}
+\end{Schunk}
+\includegraphics{test_routines_0_0_1-012}
+
+\end{document}
